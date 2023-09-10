@@ -3,6 +3,7 @@ from PIL import ImageTk, Image
 from tkinter import messagebox
 import pyperclip
 import random
+import json
 
 BACKGROUND_COLOR = "#dbd4bd"
 WIDTH = 300
@@ -29,8 +30,12 @@ class PasswordManager:
 
         self.website_label = Label(text="Website:", width=LABEL_WIDTH, bg=BACKGROUND_COLOR)
         self.website_label.grid(row=1, column=0, pady=2)
-        self.website_input = Entry(width=ENTRY_WIDTH)
-        self.website_input.grid(row=1, column=1, columnspan=2, sticky=W, pady=2)
+
+        self.website_input = Entry(width=21)
+        self.website_input.grid(row=1, column=1, sticky=W, pady=2)
+
+        self.website_search_button = Button(text="Search", width=14, command=self.search_website)
+        self.website_search_button.grid(row=1, column=2, sticky=E, pady=2)
 
         self.email_label = Label(text="Email/Username", width=LABEL_WIDTH, bg=BACKGROUND_COLOR, )
         self.email_label.grid(row=2, column=0, pady=2)
@@ -57,6 +62,13 @@ class PasswordManager:
         email = self.email_input.get()
         password = self.password_input.get()
 
+        new_data = {
+            website:{
+                "email": email,
+                "password": password,
+            }
+        }
+
         if len(password) == 0 or len(email) == 0 or len(website) == 0:
             messagebox.showwarning(title="Warning", message="Please don't leave any fields empty!")
         else:
@@ -65,11 +77,19 @@ class PasswordManager:
             is_ok = messagebox.askokcancel(title=f"Saving data for: {website}", message=message)
             if is_ok:
                 print(self.website_input.get(), self.email_input.get(), self.password_input.get())
-                with open("passwords.txt", "a") as f:
-                    f.write(website + " | " + email + " | " + password + "\n")
-
-                self.website_input.delete(0, END)
-                self.password_input.delete(0, END)
+                try:
+                    with open("passwords.json", "r") as f:
+                        data = json.load(f)
+                except FileNotFoundError:
+                    with open("passwords.json", "w") as f:
+                        json.dump(new_data, f, indent=4)
+                else:
+                    data.update(new_data)
+                    with open("passwords.json", "w") as f:
+                        json.dump(data, f, indent=4)
+                finally:
+                    self.website_input.delete(0, END)
+                    self.password_input.delete(0, END)
 
     def password_generator(self):
         letters = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't',
@@ -92,6 +112,23 @@ class PasswordManager:
         self.password = "".join(char for char in password_list)
         self.v.set(self.password)
         pyperclip.copy(self.password)
+
+    def search_website(self):
+        website_input = self.website_input.get()
+        try:
+            with open("passwords.json", "r") as f:
+                data = json.load(f)
+                if website_input in data:
+                    print(data[website_input]["email"])
+                    print(data[website_input]["password"])
+
+                    messagebox.showinfo(title="MyPass", message="{}\nLogin: {}\nPassord: {}".format(website_input,data[website_input]["email"],
+                                                                           data[website_input]["password"]))
+                else:
+                    messagebox.showinfo(title="MyPass", message="There is no data for website {}".format(website_input))
+        except FileNotFoundError:
+            messagebox.showinfo(title="MyPass",
+                                message="No Data File Found")
 
 
 
